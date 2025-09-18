@@ -297,16 +297,14 @@ Architecture:
 <body>
     <h1>
         <img src="/lighton-logo.png" alt="LightOn Logo">
-        <span>workflow builder</span>
-        <small style="display: block; font-size: 14px; color: #666; margin-top: 5px;">📁 File Mode - Uses workflow_code.py for testing</small>
+        <span> | Paradigm screening workflow</span>
+        <small style="display: block; font-size: 14px; color: #666; margin-top: 5px;"></small>
     </h1>
     
     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px auto; max-width: 800px; border-left: 4px solid #007bff;">
-        <h3 style="margin-top: 0; color: #333;">💼 Payment Request & Invoice Validation Workflow</h3>
+        <h3 style="margin-top: 0; color: #333;">💼 Inbound Investment Opportunity Screening </h3>
         <p style="margin: 10px 0; color: #555; line-height: 1.5;">
-            This workflow validates payment requests against their supporting invoices. It extracts amounts from uploaded documents, 
-            compares totals for discrepancies, identifies invoices older than 90 days, and generates detailed validation reports 
-            to ensure payment accuracy and compliance.
+            This worflow aims at automatically analyze inbound investment opportunities (emails, decks) against Kanoo Ventures investment criteria to identify high-potential deals leveraging Paradigm intelligence.
         </p>
     </div>
     
@@ -318,15 +316,14 @@ Architecture:
         <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff9800;">
             <h3 style="margin-top: 0; color: #e65100;">📋 Upload Instructions</h3>
             <div style="margin: 15px 0;">
-                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 1: Upload Payment Request</p>
-                <p style="margin: 5px 0 15px 20px; color: #555;">Upload the single payment request document first.</p>
+                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 1: Upload Inbound Email Information</p>
+                <p style="margin: 5px 0 15px 20px; color: #555;">Upload the single email in a docx format.</p>
                 
-                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 2: Upload Supporting Invoices</p>
-                <p style="margin: 5px 0 15px 20px; color: #555;">Upload all supporting invoice documents (no limit on number of invoices).</p>
+                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 2: Upload Pitch Material</p>
+                <p style="margin: 5px 0 15px 20px; color: #555;">Upload the received presentation deck.</p>
                 
                 <p style="margin: 8px 0; color: #666; font-size: 14px;">
-                    <strong>⚠️ Important:</strong> Upload order matters! The first document uploaded will be treated as the payment request, 
-                    and all subsequent documents will be treated as invoices.
+                    <strong>⚠️ Important:</strong> Upload order does not matter!
                 </p>
             </div>
         </div>
@@ -337,7 +334,7 @@ Architecture:
             <div class="file-upload-area" id="queryUploadArea" ondrop="handleQueryDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
                 <p>📎 Drag and drop files here or <button onclick="document.getElementById('queryFileInput').click()">browse files</button></p>
                 <input type="file" id="queryFileInput" multiple style="display: none;" onchange="handleQueryFileSelect(event)">
-                <p style="font-size: 12px; color: #666;">Upload payment request first, then invoices</p>
+                <p style="font-size: 12px; color: #666;">Upload documents</p>
                 <p style="font-size: 11px; color: #888; margin-top: 5px;">Supported formats: PDF, DOC, DOCX, TXT, and images</p>
             </div>
             
