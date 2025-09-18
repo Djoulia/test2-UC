@@ -1,0 +1,2228 @@
+<!--
+Workflow Automation System Frontend
+
+This is the main frontend interface for the AI-powered workflow automation system.
+It provides a comprehensive web UI for:
+
+1. Workflow Creation:
+   - Natural language workflow descriptions
+   - AI-powered code generation using Anthropic Claude
+   - Real-time status updates and code preview
+
+2. File Management:
+   - Drag-and-drop file uploads
+   - File attachment to workflow queries
+   - Integration with LightOn Paradigm API for document processing
+
+3. Workflow Execution:
+   - Execute workflows with user queries
+   - Support for attached documents
+   - Real-time execution monitoring with detailed logs
+
+4. Monitoring and Debugging:
+   - Comprehensive API call logging
+   - Step-by-step workflow execution tracking
+   - Error handling and user feedback
+
+Key Features:
+- Cross-domain API integration with CORS support
+- Real-time logging with color-coded output
+- Responsive design with modern CSS styling
+- File drag-and-drop with visual feedback
+
+Architecture:
+- Pure vanilla JavaScript (no frameworks)
+- REST API integration with fetch()
+- Modular function design for maintainability
+- Comprehensive error handling and user feedback
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Automation - File Mode</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        /* 
+         * CSS Styles for Workflow Automation Interface
+         * 
+         * Provides a clean, modern interface with:
+         * - Responsive design for desktop and mobile
+         * - Color-coded status indicators
+         * - Terminal-style logging interface
+         * - Drag-and-drop file upload styling
+         * - Button states and hover effects
+         */
+        
+        /* Base layout and typography */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #ffe6e6;
+            border-color: #ff9999;
+            color: #cc0000;
+        }
+        .success {
+            background: #e6ffe6;
+            border-color: #99ff99;
+            color: #006600;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .workflow-info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .logs-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+        .log-timestamp {
+            color: #888;
+        }
+        .log-api-call {
+            color: #00ccff;
+            font-weight: bold;
+        }
+        .log-query {
+            color: #ffcc00;
+        }
+        .log-doc-ids {
+            color: #ff9900;
+        }
+        .log-response {
+            color: #00ff88;
+        }
+        .log-error {
+            color: #ff4444;
+        }
+        .log-workflow-step {
+            color: #ff00ff;
+            font-weight: bold;
+        }
+        .log-endpoint {
+            color: #00ffff;
+        }
+        .log-payload {
+            color: #ffaa00;
+        }
+        .log-chunk {
+            color: #aaffaa;
+            font-size: 10px;
+        }
+        .log-detailed {
+            color: #cccccc;
+            font-size: 10px;
+            margin-left: 15px;
+        }
+        .clear-logs {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+        .file-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #fafafa;
+            margin: 10px 0;
+        }
+        .file-upload-area.dragover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        .file-list li {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-info {
+            flex-grow: 1;
+        }
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .file-actions button {
+            padding: 4px 8px;
+            font-size: 12px;
+            margin: 0;
+        }
+        .remove-file {
+            background: #dc3545;
+        }
+        .remove-file:hover {
+            background: #c82333;
+        }
+        /* Add these styles to your existing CSS section */
+        h1 {
+            font-size: 32px; /* Increased to match the logo text size better */
+            font-weight: 700; /* Increased to bold to match the logo */
+            color: #000;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; /* More comprehensive font stack */
+            letter-spacing: -0.5px; /* Tighter letter spacing to match logo */
+            line-height: 1; /* Tighter line height */
+        }
+
+        h1 img {
+            height: 52px;
+            width: auto;
+            margin-right: 10px;
+            margin-top: 3px;
+            vertical-align: middle;
+        }
+
+        h1 span {
+            margin-top: 2px;
+            font-weight: 700; /* Ensure the span also has the same weight */
+            font-size: 32px; /* Ensure the span also has the same size */
+        }
+        .container h3 {
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .container .helper-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .container .helper-section h3 {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .container .helper-section p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>
+        <img src="/lighton-logo.png" alt="LightOn Logo">
+        <span>workflow builder</span>
+        <small style="display: block; font-size: 14px; color: #666; margin-top: 5px;">📁 File Mode - Uses workflow_code.py for testing</small>
+    </h1>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px auto; max-width: 800px; border-left: 4px solid #007bff;">
+        <h3 style="margin-top: 0; color: #333;">💼 Payment Request & Invoice Validation Workflow</h3>
+        <p style="margin: 10px 0; color: #555; line-height: 1.5;">
+            This workflow validates payment requests against their supporting invoices. It extracts amounts from uploaded documents, 
+            compares totals for discrepancies, identifies invoices older than 90 days, and generates detailed validation reports 
+            to ensure payment accuracy and compliance.
+        </p>
+    </div>
+    
+    <!-- Step 3: Test Workflow -->
+    <div class="container">
+        <h2>Test Workflow</h2>
+        
+        <!-- Upload Instructions -->
+        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff9800;">
+            <h3 style="margin-top: 0; color: #e65100;">📋 Upload Instructions</h3>
+            <div style="margin: 15px 0;">
+                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 1: Upload Payment Request</p>
+                <p style="margin: 5px 0 15px 20px; color: #555;">Upload the single payment request document first.</p>
+                
+                <p style="margin: 8px 0; color: #333; font-weight: bold;">Step 2: Upload Supporting Invoices</p>
+                <p style="margin: 5px 0 15px 20px; color: #555;">Upload all supporting invoice documents (no limit on number of invoices).</p>
+                
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                    <strong>⚠️ Important:</strong> Upload order matters! The first document uploaded will be treated as the payment request, 
+                    and all subsequent documents will be treated as invoices.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Document Upload Section -->
+        <div style="margin: 15px 0;">
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">📎 Upload Documents:</label>
+            <div class="file-upload-area" id="queryUploadArea" ondrop="handleQueryDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                <p>📎 Drag and drop files here or <button onclick="document.getElementById('queryFileInput').click()">browse files</button></p>
+                <input type="file" id="queryFileInput" multiple style="display: none;" onchange="handleQueryFileSelect(event)">
+                <p style="font-size: 12px; color: #666;">Upload payment request first, then invoices</p>
+                <p style="font-size: 11px; color: #888; margin-top: 5px;">Supported formats: PDF, DOC, DOCX, TXT, and images</p>
+            </div>
+            
+            <div id="queryUploadStatus"></div>
+            <ul class="file-list" id="queryFilesList"></ul>
+        </div>
+        
+        <button onclick="executeWorkflowWithQuery()" id="testButton">Test Workflow (from File)</button>
+        <div id="testResult" style="margin-top: 15px;"></div>
+        
+        <!-- Feedback Section -->
+        <div id="feedbackSection" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; display: none;">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 15px;">🔧 Improve Generated Code</h3>
+            <p style="color: #666; margin-bottom: 15px;">Provide feedback to modify the generated workflow code while maintaining all original requirements:</p>
+            
+            <div style="margin: 15px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold;">💬 Your Feedback:</label>
+                <textarea id="feedbackInput" 
+                    placeholder="Example: 'The output format should include the document source names' or 'Add error handling for missing fields' or 'Sort results by date in descending order'" 
+                    style="height: 100px; width: 100%; resize: vertical;">
+                </textarea>
+                <div style="background: #fff3e0; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 13px; color: #e65100;">
+                    <strong>💡 Note:</strong> Your feedback will be used to modify the code while preserving all original workflow requirements and code generation standards.
+                </div>
+            </div>
+            
+            <button onclick="applyFeedbackToCode()" id="feedbackButton" style="background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                Apply Feedback to Code
+            </button>
+            <div id="feedbackResult" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Monitoring Helper Section -->
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+        <h3 style="color: #666; font-size: 16px; margin-bottom: 15px;">📊 Monitor Workflow Execution</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Monitor every step of workflow execution with detailed information:</p>
+        <ul style="font-size: 12px; color: #666; margin: 10px 0;">
+            <li>🔍 API endpoints called and payloads sent</li>
+            <li>📊 Document IDs, file IDs, and search queries</li>
+            <li>💬 Response content and analysis results</li>
+            <li>📄 Document chunks and file processing details</li>
+            <li>⚡ Step-by-step workflow execution flow</li>
+            <li>❌ Error handling and fallback mechanisms</li>
+        </ul>
+        <button onclick="clearLogs()" class="clear-logs">Clear Logs</button>
+        <div class="logs-container" id="logsContainer">
+            <div class="log-entry">
+                <span class="log-timestamp">[Ready]</span> <span class="log-response">Waiting for API activity...</span>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        /*
+         * Workflow Automation Frontend JavaScript
+         * 
+         * This script provides the complete frontend functionality for the workflow
+         * automation system, including:
+         * 
+         * 1. API Integration:
+         *    - RESTful API calls to backend services
+         *    - Error handling and response processing
+         *    - Cross-domain request handling
+         * 
+         * 2. File Management:
+         *    - Drag-and-drop file uploads
+         *    - File attachment to queries
+         *    - File deletion and management
+         * 
+         * 3. Logging System:
+         *    - Real-time API call logging
+         *    - Color-coded log entries by type
+         *    - Detailed workflow execution tracking
+         * 
+         * 4. User Interface:
+         *    - Dynamic UI updates based on state
+         *    - Form validation and user feedback
+         *    - Responsive design interactions
+         * 
+         * Architecture:
+         * - Event-driven programming model
+         * - Modular functions for maintainability
+         * - Global state management for workflow tracking
+         * - Comprehensive error handling throughout
+         */
+        
+         
+        // Global configuration and state variables
+        const API_BASE = 'http://localhost:8000/api'  // Local backend API base URL with /api prefix
+        // const API_BASE = '/api'  // Same-domain API base URL for Vercel deployment
+        let currentWorkflowId = null;    // Currently active workflow ID
+        let logCounter = 0;              // Counter for log entry IDs
+        let queryAttachedFiles = [];     // Files attached to current query
+        let feedbackIterationCount = 0;  // Counter for feedback improvements
+
+        /**
+         * Update the test button state based on available workflow code or stored workflow
+         */
+        function updateTestButtonState() {
+            const testButton = document.getElementById('testButton');
+            if (testButton) {
+                // Always enable the test button and always use file mode
+                testButton.disabled = false;
+                testButton.textContent = 'Test Workflow (from File)';
+            }
+        }
+        
+        /**
+         * Update the feedback iteration counter display
+         */
+        function updateFeedbackCounter() {
+            const counterElement = document.getElementById('iterationCount');
+            const counterContainer = document.getElementById('feedbackIterationCounter');
+            
+            if (counterElement && counterContainer) {
+                counterElement.textContent = feedbackIterationCount;
+                if (feedbackIterationCount > 0) {
+                    counterContainer.style.display = 'block';
+                } else {
+                    counterContainer.style.display = 'none';
+                }
+            }
+        }
+        
+        /**
+         * Reset feedback counter when new workflow is created or code is manually changed
+         */
+        function resetFeedbackCounter() {
+            feedbackIterationCount = 0;
+            updateFeedbackCounter();
+        }
+
+        // =============================================================
+        // FILE UPLOAD AND MANAGEMENT FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Handle drag-and-drop file uploads for query attachments.
+         * Prevents default drag behavior and processes dropped files.
+         */
+        function handleQueryDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const uploadArea = document.getElementById('queryUploadArea');
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(event.dataTransfer.files);
+            uploadQueryFiles(files);
+        }
+
+        /**
+         * Handle drag-over events for file upload areas.
+         * Provides visual feedback during drag operations.
+         */
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const uploadArea = event.target.closest('.file-upload-area');
+            if (uploadArea) {
+                uploadArea.classList.add('dragover');
+            }
+        }
+
+        /**
+         * Handle drag-leave events for file upload areas.
+         * Removes visual feedback when drag leaves the area.
+         */
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const uploadArea = event.target.closest('.file-upload-area');
+            if (uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        }
+
+        /**
+         * Handle file selection from file input element.
+         * Processes files selected via browse button.
+         */
+        function handleQueryFileSelect(event) {
+            const files = Array.from(event.target.files);
+            uploadQueryFiles(files);
+        }
+
+        /**
+         * Upload files to the backend and attach them to queries.
+         * Handles multiple files, updates UI, and manages error states.
+         * 
+         * @param {FileList} files - Files to upload
+         */
+        async function uploadQueryFiles(files) {
+            const statusDiv = document.getElementById('queryUploadStatus');
+            const filesList = document.getElementById('queryFilesList');
+            
+            for (const file of files) {
+                try {
+                    statusDiv.innerHTML = `<div class="result loading">Uploading ${file.name}...</div>`;
+                    addLog(`📤 Uploading query attachment: ${file.name} (${file.size} bytes)`, 'info');
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('collection_type', 'private');
+                    
+                    const { response, data } = await loggedFetch(`${API_BASE}/files/upload`, {
+                        method: 'POST',
+                        body: formData
+                    }, `UPLOAD QUERY FILE: ${file.name}`);
+                    
+                    if (response.ok) {
+                        // Add to query attached files list
+                        queryAttachedFiles.push(data);
+                        
+                        // Update UI
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `
+                            <div class="file-info">
+                                <strong>${data.filename}</strong> (ID: ${data.id})
+                                <br><small>${data.bytes} bytes • Status: ${data.status}</small>
+                            </div>
+                            <div class="file-actions">
+                                <button onclick="removeQueryFile(${data.id})" class="remove-file" title="Remove attachment">🗑️</button>
+                            </div>
+                        `;
+                        filesList.appendChild(listItem);
+                        
+                        statusDiv.innerHTML = `<div class="result success">✅ ${file.name} attached to query!</div>`;
+                        addLog(`✅ Query file uploaded successfully: ID ${data.id}`, 'response');
+                        
+                    } else {
+                        statusDiv.innerHTML = `<div class="result error">❌ Failed to upload ${file.name}</div>`;
+                        addLog(`❌ Query upload failed: ${data.detail || 'Unknown error'}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="result error">❌ Network error uploading ${file.name}</div>`;
+                    addLog(`❌ Query upload network error: ${error.message}`, 'error');
+                }
+            }
+            
+            // Clear file input
+            document.getElementById('queryFileInput').value = '';
+        }
+
+        /**
+         * Remove a file attachment from the current query.
+         * Deletes the file from backend and updates local state.
+         * 
+         * @param {number} fileId - ID of the file to remove
+         */
+        async function removeQueryFile(fileId) {
+            if (!confirm('Are you sure you want to remove this attachment?')) return;
+            
+            try {
+                addLog(`🗑️ Removing query attachment ID: ${fileId}`, 'info');
+                
+                const { response, data } = await loggedFetch(`${API_BASE}/files/${fileId}`, {
+                    method: 'DELETE'
+                }, `DELETE QUERY FILE: ${fileId}`);
+                
+                if (response.ok) {
+                    // Remove from query attached files array
+                    queryAttachedFiles = queryAttachedFiles.filter(file => file.id !== fileId);
+                    
+                    // Remove from UI
+                    const filesList = document.getElementById('queryFilesList');
+                    const items = filesList.querySelectorAll('li');
+                    items.forEach(item => {
+                        if (item.innerHTML.includes(`ID: ${fileId}`)) {
+                            item.remove();
+                        }
+                    });
+                    
+                    addLog(`✅ Query attachment removed: ID ${fileId}`, 'response');
+                    
+                } else {
+                    addLog(`❌ Remove attachment error: ${data.detail}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Remove attachment network error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Automatically clean up uploaded documents from Paradigm after workflow testing.
+         * This ensures documents uploaded for testing don't accumulate in the user's workspace.
+         * 
+         * @param {number[]} documentIds - Array of document IDs to delete
+         */
+        async function cleanupUploadedDocuments(documentIds) {
+            if (!documentIds || documentIds.length === 0) {
+                return; // No documents to clean up
+            }
+            
+            addLog(`🧹 Starting automatic cleanup of ${documentIds.length} test document(s)...`, 'info');
+            
+            let cleanupSuccessCount = 0;
+            let cleanupFailCount = 0;
+            
+            for (const documentId of documentIds) {
+                try {
+                    const { response } = await loggedFetch(`${API_BASE}/files/${documentId}`, {
+                        method: 'DELETE'
+                    }, `CLEANUP TEST DOCUMENT: ${documentId}`);
+                    
+                    if (response.ok || response.status === 404) {
+                        // 404 means already deleted, which is fine
+                        cleanupSuccessCount++;
+                        addLog(`🗑️ Test document ${documentId} deleted successfully`, 'response');
+                    } else {
+                        cleanupFailCount++;
+                        addLog(`⚠️ Failed to delete test document ${documentId} (status: ${response.status})`, 'error');
+                    }
+                } catch (error) {
+                    cleanupFailCount++;
+                    addLog(`⚠️ Error deleting test document ${documentId}: ${error.message}`, 'error');
+                }
+            }
+            
+            if (cleanupSuccessCount > 0) {
+                addLog(`✅ Cleanup completed: ${cleanupSuccessCount} document(s) deleted from Paradigm`, 'response');
+            }
+            
+            if (cleanupFailCount > 0) {
+                addLog(`⚠️ Cleanup issues: ${cleanupFailCount} document(s) could not be deleted`, 'error');
+            }
+        }
+
+        // =============================================================
+        // LOGGING AND MONITORING FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Add a new log entry to the monitoring console.
+         * Provides real-time feedback on API calls and workflow execution.
+         * 
+         * @param {string} message - Log message to display
+         * @param {string} type - Log type for color coding
+         * @returns {number} Log entry ID for potential updates
+         */
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('logsContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logId = ++logCounter;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.id = `log-${logId}`;
+            
+            let className = 'log-response';
+            switch(type) {
+                case 'api': className = 'log-api-call'; break;
+                case 'query': className = 'log-query'; break;
+                case 'docs': className = 'log-doc-ids'; break;
+                case 'error': className = 'log-error'; break;
+                case 'response': className = 'log-response'; break;
+                case 'workflow-step': className = 'log-workflow-step'; break;
+                case 'endpoint': className = 'log-endpoint'; break;
+                case 'payload': className = 'log-payload'; break;
+                case 'chunk': className = 'log-chunk'; break;
+                case 'detailed': className = 'log-detailed'; break;
+            }
+            
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span> 
+                <span class="${className}">${message}</span>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            return logId;
+        }
+
+        /**
+         * Update an existing log entry with new information.
+         * Used to update status of ongoing operations.
+         * 
+         * @param {number} logId - ID of log entry to update
+         * @param {string} message - New message content
+         * @param {string} type - Log type for color coding
+         */
+        function updateLog(logId, message, type = 'response') {
+            const logEntry = document.getElementById(`log-${logId}`);
+            if (logEntry) {
+                const timestamp = new Date().toLocaleTimeString();
+                let className = 'log-response';
+                if (type === 'error') className = 'log-error';
+                
+                logEntry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span> 
+                    <span class="${className}">${message}</span>
+                `;
+            }
+        }
+
+        /**
+         * Clear all log entries and reset the monitoring console.
+         */
+        function clearLogs() {
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = `
+                <div class="log-entry">
+                    <span class="log-timestamp">[Ready]</span> 
+                    <span class="log-response">Logs cleared. Waiting for API activity...</span>
+                </div>
+            `;
+            logCounter = 0;
+        }
+
+        // =============================================================
+        // API INTEGRATION FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Enhanced fetch wrapper with comprehensive logging.
+         * Logs all API calls, responses, and errors for debugging.
+         * 
+         * @param {string} url - API endpoint URL
+         * @param {object} options - Fetch options (method, headers, body)
+         * @param {string} description - Human-readable description of the call
+         * @returns {object} Response object with data and status
+         */
+        async function loggedFetch(url, options = {}, description = '') {
+            const logId = addLog(`🌐 API CALL: ${description || url}`, 'api');
+            
+            try {
+                // Log request details
+                if (options.body) {
+                    try {
+                        const bodyData = JSON.parse(options.body);
+                        if (bodyData.description) {
+                            addLog(`📝 WORKFLOW DESC: ${bodyData.description.substring(0, 100)}...`, 'query');
+                        }
+                        if (bodyData.user_input) {
+                            addLog(`🔍 USER QUERY: ${bodyData.user_input}`, 'query');
+                        }
+                    } catch (e) {
+                        // Not JSON, skip parsing
+                    }
+                }
+                
+                const response = await fetch(url, options);
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    // If JSON parsing fails, try to get text content for debugging
+                    const textContent = await response.text();
+                    addLog(`⚠️ JSON parse error: ${jsonError.message}. Response: ${textContent.substring(0, 200)}...`, 'error');
+                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
+                }
+                
+                // Log response details
+                if (response.ok) {
+                    updateLog(logId, `✅ ${description || 'API CALL'} - SUCCESS (${response.status})`, 'response');
+                    
+                    // Log specific response details
+                    if (url.includes('/workflows') && !url.includes('/execute')) {
+                        addLog(`🔧 WORKFLOW ID: ${data.id}`, 'response');
+                        if (data.generated_code) {
+                            addLog(`💻 CODE GENERATED: ${data.generated_code.length} characters`, 'response');
+                        }
+                    }
+                    
+                    if (url.includes('/execute')) {
+                        addLog(`⚡ EXECUTION ID: ${data.execution_id}`, 'response');
+                        addLog(`📊 STATUS: ${data.status}`, 'response');
+                        if (data.execution_time) {
+                            addLog(`⏱️ EXECUTION TIME: ${data.execution_time.toFixed(2)}s`, 'response');
+                        }
+                    }
+                } else {
+                    updateLog(logId, `❌ ${description || 'API CALL'} - ERROR (${response.status})`, 'error');
+                    addLog(`🚨 ERROR DETAILS: ${data.detail || 'Unknown error'}`, 'error');
+                }
+                
+                return { response, data };
+                
+            } catch (error) {
+                updateLog(logId, `❌ ${description || 'API CALL'} - NETWORK ERROR`, 'error');
+                addLog(`🚨 NETWORK ERROR: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // =============================================================
+        // FLEXIBLE ENHANCEMENT RESPONSE PARSING FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Flexible parser for enhancement responses - handles various AI output formats
+         * @param {Object} data - Raw response data from API
+         * @returns {Object} Normalized enhancement data
+         */
+        function parseEnhancementResponse(data) {
+            const result = {
+                description: '',
+                questions: [],
+                warnings: [],
+                sections: []
+            };
+            
+            // Handle standard JSON format
+            if (data.enhanced_description && typeof data.enhanced_description === 'string') {
+                result.description = data.enhanced_description;
+                result.questions = Array.isArray(data.questions) ? data.questions : [];
+                result.warnings = Array.isArray(data.warnings) ? data.warnings : [];
+                
+                // Try to parse structured description into sections
+                result.sections = parseStructuredDescription(data.enhanced_description);
+                return result;
+            }
+            
+            // Handle direct string response
+            if (typeof data === 'string') {
+                result.description = data;
+                result.sections = parseStructuredDescription(data);
+                return result;
+            }
+            
+            // Handle various object formats - be flexible with property names
+            const possibleDescriptionFields = [
+                'enhanced_description', 'description', 'workflow_description', 
+                'result', 'content', 'text', 'response'
+            ];
+            
+            const possibleQuestionFields = [
+                'questions', 'clarifications', 'needs_clarification', 'asks', 'queries'
+            ];
+            
+            const possibleWarningFields = [
+                'warnings', 'limitations', 'constraints', 'issues', 'notes', 'alerts'
+            ];
+            
+            // Find description field
+            for (const field of possibleDescriptionFields) {
+                if (data[field] && typeof data[field] === 'string') {
+                    result.description = data[field];
+                    break;
+                }
+            }
+            
+            // Find questions field
+            for (const field of possibleQuestionFields) {
+                if (data[field] && Array.isArray(data[field])) {
+                    result.questions = data[field];
+                    break;
+                } else if (data[field] && typeof data[field] === 'string') {
+                    result.questions = [data[field]];
+                    break;
+                }
+            }
+            
+            // Find warnings field
+            for (const field of possibleWarningFields) {
+                if (data[field] && Array.isArray(data[field])) {
+                    result.warnings = data[field];
+                    break;
+                } else if (data[field] && typeof data[field] === 'string') {
+                    result.warnings = [data[field]];
+                    break;
+                }
+            }
+            
+            // Parse structured content
+            if (result.description) {
+                result.sections = parseStructuredDescription(result.description);
+            }
+            
+            // Fallback: if no description found, stringify the entire response
+            if (!result.description) {
+                result.description = JSON.stringify(data, null, 2);
+                result.warnings.push("Response format was not recognized. Displaying raw content.");
+            }
+            
+            return result;
+        }
+        
+        /**
+         * Parse structured description text into sections for better display
+         * @param {string} description - The enhanced description text
+         * @returns {Array} Array of parsed sections
+         */
+        function parseStructuredDescription(description) {
+            const sections = [];
+            
+            if (!description || typeof description !== 'string') {
+                return sections;
+            }
+            
+            // Try to detect step-based format
+            const stepMatches = description.match(/STEP \\d+:.*?(?=STEP \\d+:|$)/gs);
+            if (stepMatches && stepMatches.length > 0) {
+                stepMatches.forEach((stepText, index) => {
+                    const section = parseStepSection(stepText, index + 1);
+                    if (section) sections.push(section);
+                });
+                return sections;
+            }
+            
+            // Try to detect numbered list format
+            const numberedMatches = description.match(/^\\d+\\..+?(?=^\\d+\\.|$)/gm);
+            if (numberedMatches && numberedMatches.length > 0) {
+                numberedMatches.forEach((stepText, index) => {
+                    sections.push({
+                        type: 'numbered_step',
+                        number: index + 1,
+                        title: stepText.substring(0, 100).trim() + (stepText.length > 100 ? '...' : ''),
+                        content: stepText.trim(),
+                        context: null,
+                        questions: null,
+                        limitations: null
+                    });
+                });
+                return sections;
+            }
+            
+            // Try to detect any other structured format with headers
+            const headerMatches = description.match(/(^|\\n)[A-Z][A-Z\\s]{2,}:.*?(?=(^|\\n)[A-Z][A-Z\\s]{2,}:|$)/gs);
+            if (headerMatches && headerMatches.length > 0) {
+                headerMatches.forEach((sectionText, index) => {
+                    const lines = sectionText.trim().split('\\n');
+                    const header = lines[0].replace(':', '').trim();
+                    const content = lines.slice(1).join('\\n').trim();
+                    
+                    sections.push({
+                        type: 'header_section',
+                        number: index + 1,
+                        title: header,
+                        content: content || header,
+                        context: null,
+                        questions: null,
+                        limitations: null
+                    });
+                });
+                return sections;
+            }
+            
+            // Fallback: treat as single section
+            sections.push({
+                type: 'single_section',
+                number: 1,
+                title: 'Enhanced Workflow Description',
+                content: description,
+                context: null,
+                questions: null,
+                limitations: null
+            });
+            
+            return sections;
+        }
+        
+        /**
+         * Parse a STEP section with subsections
+         * @param {string} stepText - Text of a single step
+         * @param {number} stepNumber - Step number
+         * @returns {Object} Parsed step section
+         */
+        function parseStepSection(stepText, stepNumber) {
+            const section = {
+                type: 'detailed_step',
+                number: stepNumber,
+                title: '',
+                content: '',
+                context: null,
+                questions: null,
+                limitations: null
+            };
+            
+            // Extract main step description
+            const stepMatch = stepText.match(/STEP \\d+:\\s*([^\\n]+)/);
+            if (stepMatch) {
+                section.title = stepMatch[1].trim();
+            }
+            
+            // Extract QUESTIONS AND LIMITATIONS section
+            const questionsAndLimitationsMatch = stepText.match(/QUESTIONS AND LIMITATIONS:\\s*([\\s\\S]*?)$/i);
+            if (questionsAndLimitationsMatch) {
+                const qlText = questionsAndLimitationsMatch[1].trim();
+                if (qlText.toLowerCase() !== 'none' && qlText.toLowerCase() !== 'none.') {
+                    // Parse both questions and limitations from the combined section
+                    const items = qlText.split('\\n').filter(q => q.trim()).map(q => q.replace(/^-\\s*/, '').trim());
+                    section.questions = items; // Store all items as questions for now
+                    section.limitations = items; // Display in both sections
+                } else {
+                    section.questions = null;
+                    section.limitations = null;
+                }
+            }
+            
+            // Set content as the title if no other content
+            section.content = section.title;
+            
+            return section;
+        }
+        
+        /**
+         * Render enhancement result with flexible formatting
+         * @param {Object} enhancedData - Parsed enhancement data
+         * @returns {string} HTML string for display
+         */
+        function renderEnhancementResult(enhancedData) {
+            let html = '<div class="result success">';
+            html += '<h3 style="margin-top: 0; color: #28a745;">✅ Workflow description enhanced successfully!</h3>';
+            
+            // Render sections if available
+            if (enhancedData.sections && enhancedData.sections.length > 0) {
+                html += '<div style="margin: 15px 0;">';
+                html += '<h4 style="color: #333; margin-bottom: 15px;">📋 Enhanced Workflow Steps:</h4>';
+                
+                enhancedData.sections.forEach(section => {
+                    html += renderSection(section);
+                });
+                
+                html += '</div>';
+            } else {
+                // Fallback to simple description display
+                html += '<div style="margin: 15px 0;">';
+                html += '<h4 style="color: #333; margin-bottom: 10px;">📋 Enhanced Description:</h4>';
+                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 4px; border-left: 4px solid #28a745; white-space: pre-line; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.5;">${enhancedData.description}</div>`;
+                html += '</div>';
+            }
+            
+            // Render global questions if any
+            if (enhancedData.questions && enhancedData.questions.length > 0) {
+                html += '<div style="margin: 15px 0;">';
+                html += '<h4 style="color: #ff9900; margin-bottom: 10px;">❓ Overall Questions:</h4>';
+                html += '<ul style="margin: 0; padding-left: 20px; background: #fff3cd; padding: 10px 10px 10px 30px; border-radius: 4px; border-left: 4px solid #ffc107;">';
+                enhancedData.questions.forEach(q => {
+                    html += `<li style="margin-bottom: 5px; color: #856404;">${q}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            // Render global warnings if any
+            if (enhancedData.warnings && enhancedData.warnings.length > 0) {
+                html += '<div style="margin: 15px 0;">';
+                html += '<h4 style="color: #dc3545; margin-bottom: 10px;">⚠️ Overall Warnings:</h4>';
+                html += '<ul style="margin: 0; padding-left: 20px; background: #f8d7da; padding: 10px 10px 10px 30px; border-radius: 4px; border-left: 4px solid #dc3545;">';
+                enhancedData.warnings.forEach(w => {
+                    html += `<li style="margin-bottom: 5px; color: #721c24;">${w}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        /**
+         * Render a single section with appropriate formatting
+         * @param {Object} section - Section data
+         * @returns {string} HTML string for the section
+         */
+        function renderSection(section) {
+            let html = '<div style="border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 15px; overflow: hidden;">';
+            
+            // Section header
+            html += `<div style="background: #f8f9fa; padding: 12px 15px; border-bottom: 1px solid #e9ecef;">`;
+            html += `<h5 style="margin: 0; color: #495057; font-weight: 600;">Step ${section.number}: ${section.title}</h5>`;
+            html += '</div>';
+            
+            // Section content
+            html += '<div style="padding: 15px;">';
+            
+            if (section.content && section.content !== section.title) {
+                html += `<div style="margin-bottom: 12px; color: #333; line-height: 1.5;">${section.content.replace(/\\n/g, '<br>')}</div>`;
+            }
+            
+            // Additional context
+            if (section.context) {
+                html += '<div style="margin-bottom: 12px;">';
+                html += '<strong style="color: #007bff; font-size: 14px;">📚 Additional Context:</strong>';
+                html += `<div style="margin-top: 5px; padding: 10px; background: #f0f7ff; border-left: 3px solid #007bff; font-size: 13px; line-height: 1.4;">${section.context.replace(/\\n/g, '<br>')}</div>`;
+                html += '</div>';
+            }
+            
+            // Questions and Limitations (combined section)
+            if (section.questions && section.questions.length > 0) {
+                html += '<div style="margin-bottom: 12px;">';
+                html += '<strong style="color: #dc3545; font-size: 14px;">❓ Questions and Limitations:</strong>';
+                html += '<ul style="margin: 5px 0 0 0; padding-left: 20px; background: #fff3e0; padding: 8px 8px 8px 25px; border-left: 3px solid #ff9900; font-size: 13px;">';
+                section.questions.forEach(q => {
+                    html += `<li style="margin-bottom: 4px; color: #e65100;">${q}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        // =============================================================
+        // WORKFLOW DESCRIPTION ENHANCEMENT FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Enhance the user's workflow description using Claude AI.
+         * Takes raw user input and transforms it into an optimal workflow description.
+         */
+        async function enhanceWorkflowDescription() {
+            const rawDescription = document.getElementById('rawWorkflowDescription').value.trim();
+            const resultDiv = document.getElementById('enhancedDescriptionResult');
+            const enhancedDiv = document.getElementById('enhancedDescription');
+            
+            if (!rawDescription) {
+                showResult(resultDiv, 'Please enter a workflow description', 'error');
+                addLog('❌ No raw workflow description provided', 'error');
+                return;
+            }
+
+            showResult(resultDiv, 'Enhancing workflow description...', 'loading');
+            addLog('🚀 Starting workflow description enhancement...', 'info');
+
+            try {
+                const { response, data } = await loggedFetch(`${API_BASE}/workflows/enhance-description`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: rawDescription
+                    })
+                }, 'ENHANCE WORKFLOW DESCRIPTION');
+
+                if (response.ok) {
+                    // Flexible parsing - handle various response formats
+                    const enhancedData = parseEnhancementResponse(data);
+                    
+                    // Update the Create Workflow step with enhanced description
+                    document.getElementById('workflowDescription').value = enhancedData.description;
+                    document.getElementById('workflowDescription').style.color = '#333';
+                    
+                    // Store enhanced description
+                    enhancedDiv.innerHTML = enhancedData.description;
+                    
+                    // Create formatted display using flexible renderer
+                    const formattedHtml = renderEnhancementResult(enhancedData);
+                    resultDiv.innerHTML = formattedHtml;
+                    
+                    // Add instruction message
+                    const instructionDiv = document.createElement('div');
+                    instructionDiv.style.cssText = 'background: #e3f2fd; padding: 15px; border-radius: 4px; margin-top: 15px; border-left: 4px solid #2196f3; font-size: 14px;';
+                    instructionDiv.innerHTML = '<strong>💡 Next Steps:</strong><br>' +
+                        '• If this workflow description looks good → Proceed to <strong>Step 2</strong> to create the workflow<br>' +
+                        '• If you need to address questions or warnings → Refine your input above and enhance again<br>' +
+                        '• You can also manually edit the description in Step 2 before generating code';
+                    resultDiv.appendChild(instructionDiv);
+                    
+                } else {
+                    showResult(resultDiv, `❌ Error: ${data.detail || 'Failed to enhance workflow description'}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        // =============================================================
+        // WORKFLOW MANAGEMENT FUNCTIONS
+        // =============================================================
+        
+        /**
+         * Create a new workflow from user description.
+         * Calls AI service to generate executable code from natural language.
+         */
+        async function createWorkflow() {
+            const description = document.getElementById('workflowDescription').value.trim();
+            const name = document.getElementById('workflowName').value.trim();
+            const resultDiv = document.getElementById('workflowResult');
+            
+            if (!description) {
+                showResult(resultDiv, 'Please enter a workflow description', 'error');
+                addLog('❌ No workflow description provided', 'error');
+                return;
+            }
+
+            showResult(resultDiv, 'Creating workflow...', 'loading');
+            addLog('🚀 Starting workflow creation...', 'info');
+
+            try {
+                const { response, data } = await loggedFetch(`${API_BASE}/workflows`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: description,
+                        name: name || null
+                    })
+                }, 'CREATE WORKFLOW');
+
+                if (response.ok) {
+                    currentWorkflowId = data.id;
+                    
+                    // Reset feedback counter for new workflow
+                    resetFeedbackCounter();
+                    
+                    // Populate the code textarea with generated code
+                    const codeTextarea = document.getElementById('workflowCode');
+                    if (data.generated_code) {
+                        codeTextarea.value = data.generated_code;
+                        codeTextarea.style.color = '#333';
+                        
+                        // Sync to automated testing section
+                        const autoCodeTextarea = document.getElementById('workflowCodeAuto');
+                        if (autoCodeTextarea) {
+                            autoCodeTextarea.value = data.generated_code;
+                            autoCodeTextarea.style.color = '#333';
+                            updateLaunchButtonState();
+                        }
+                    }
+                    
+                    // Update button state
+                    updateTestButtonState();
+                    
+                    const resultMessage = `✅ Workflow created successfully!\n\nID: ${data.id}\nName: ${data.name || 'Unnamed'}\nStatus: ${data.status}\n\nGenerated Code:\n${data.generated_code || 'No code generated'}`;
+                    
+                    showResult(resultDiv, resultMessage, 'success');
+                } else {
+                    showResult(resultDiv, `❌ Error: ${data.detail || 'Failed to create workflow'}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Execute a workflow with user query and optional file attachments.
+         * Runs the generated workflow code and displays results with detailed logging.
+         */
+        async function executeWorkflowWithQuery() {
+            const query = "Validate payment request against invoices"; // Default query for payment validation workflow
+            const resultDiv = document.getElementById('testResult');
+            const workflowCode = ""; // No UI code in file mode - always uses workflow_code.py
+            
+            // Always use file-based workflow code in this version
+            const hasCodeInUI = false; // Force file mode
+            addLog('📁 Always using workflow code from workflow_code.py file (File Mode)', 'info');
+
+            // Check if files are attached
+            const hasAttachments = queryAttachedFiles.length > 0;
+            const attachmentIds = queryAttachedFiles.map(file => file.id);
+
+            showResult(resultDiv, 'Executing workflow... (this may take up to 5 minutes for document analysis)', 'loading');
+            addLog('🚀 Starting workflow execution...', 'info');
+            
+            if (workflowCode) {
+                addLog(`💻 USING CUSTOM CODE: ${workflowCode.length} characters`, 'response');
+            } else {
+                addLog(`🎯 USING STORED WORKFLOW ID: ${currentWorkflowId}`, 'response');
+            }
+            
+            if (query) {
+                addLog(`📝 USER QUERY: ${query}`, 'query');
+            } else {
+                addLog(`📝 USER QUERY: [empty - workflow will run without input]`, 'query');
+            }
+            
+            if (hasAttachments) {
+                addLog(`📎 ATTACHED DOCUMENTS: ${attachmentIds.length} files [${attachmentIds.join(', ')}]`, 'docs');
+            }
+
+            try {
+                let apiCall;
+                
+                // Always use the execute-code endpoint, which will automatically
+                // use UI code if provided, or workflow_code.py file if UI is empty
+                let codeExecutionPayload = {
+                    code: hasCodeInUI ? workflowCode : "",  // Send empty string to use file-based code
+                    user_input: query || ""
+                };
+                
+                if (hasAttachments) {
+                    codeExecutionPayload.attached_file_ids = attachmentIds;
+                }
+
+                apiCall = loggedFetch(`${API_BASE}/workflows/execute-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(codeExecutionPayload)
+                }, hasCodeInUI ? 'EXECUTE UI WORKFLOW CODE' : 'EXECUTE FILE-BASED WORKFLOW CODE');
+
+                const { response, data } = await apiCall;
+
+                if (response.ok) {
+                    const executionTime = data.execution_time ? `${data.execution_time.toFixed(2)}s` : 'N/A';
+                    
+                    addLog(`⚡ WORKFLOW EXECUTION COMPLETED in ${executionTime}`, 'workflow-step');
+                    
+                    // Enhanced workflow result parsing
+                    if (data.result) {
+                        addLog('📄 ANALYZING WORKFLOW EXECUTION DETAILS...', 'workflow-step');
+                        
+                        const result = data.result;
+                        
+                        // Look for specific workflow steps and log them with details
+                        if (result.includes('WORKFLOW STEP: Paradigm Search')) {
+                            addLog('🔍 STEP DETECTED: Paradigm Document Search executed', 'workflow-step');
+                        }
+                        
+                        if (result.includes('WORKFLOW STEP: Document Analysis')) {
+                            addLog('📊 STEP DETECTED: Document Analysis executed', 'workflow-step');
+                        }
+                        
+                        if (result.includes('WORKFLOW STEP: Ask Question About File')) {
+                            addLog('❓ STEP DETECTED: File Question executed', 'workflow-step');
+                        }
+                        
+                        if (result.includes('WORKFLOW STEP: Chat Completion')) {
+                            addLog('💬 STEP DETECTED: AI Chat Completion executed', 'workflow-step');
+                        }
+                        
+                        // Extract and log search queries
+                        const searchQueries = result.match(/SEARCH QUERY: ([^\n]+)/g);
+                        if (searchQueries) {
+                            searchQueries.forEach((query, i) => {
+                                const queryText = query.replace('SEARCH QUERY: ', '');
+                                addLog(`🔍 SEARCH QUERY ${i+1}: ${queryText}`, 'query');
+                            });
+                        }
+                        
+                        // Extract and log analysis queries
+                        const analysisQueries = result.match(/ANALYSIS QUERY: ([^\n]+)/g);
+                        if (analysisQueries) {
+                            analysisQueries.forEach((query, i) => {
+                                const queryText = query.replace('ANALYSIS QUERY: ', '');
+                                addLog(`📊 ANALYSIS QUERY ${i+1}: ${queryText}`, 'query');
+                            });
+                        }
+                        
+                        // Extract and log file questions
+                        const fileQuestions = result.match(/QUESTION: ([^\n]+)/g);
+                        if (fileQuestions) {
+                            fileQuestions.forEach((question, i) => {
+                                const questionText = question.replace('QUESTION: ', '');
+                                addLog(`❓ FILE QUESTION ${i+1}: ${questionText}`, 'query');
+                            });
+                        }
+                        
+                        // Extract and log document IDs
+                        const docIdMatches = result.match(/DOCUMENT IDS: ([^\n]+)/g);
+                        if (docIdMatches) {
+                            docIdMatches.forEach((match, i) => {
+                                const docIds = match.replace('DOCUMENT IDS: ', '');
+                                addLog(`📋 DOCUMENT IDS USED ${i+1}: ${docIds}`, 'docs');
+                            });
+                        }
+                        
+                        // Extract and log file IDs
+                        const fileIdMatches = result.match(/FILE ID: (\d+)/g);
+                        if (fileIdMatches) {
+                            fileIdMatches.forEach((match, i) => {
+                                const fileId = match.replace('FILE ID: ', '');
+                                addLog(`📁 FILE ID PROCESSED ${i+1}: ${fileId}`, 'docs');
+                            });
+                        }
+                        
+                        // Extract and log API endpoints
+                        const endpointMatches = result.match(/ENDPOINT: ([^\n]+)/g);
+                        if (endpointMatches) {
+                            endpointMatches.forEach((match, i) => {
+                                const endpoint = match.replace('ENDPOINT: ', '');
+                                addLog(`📡 API ENDPOINT ${i+1}: ${endpoint}`, 'endpoint');
+                            });
+                        }
+                        
+                        // Extract and log response content
+                        const responseMatches = result.match(/(SEARCH RESULT|ANALYSIS RESULT|FILE QUESTION RESULT): ([^\n]+)/g);
+                        if (responseMatches) {
+                            responseMatches.forEach((match, i) => {
+                                const [type, content] = match.split(': ');
+                                addLog(`💬 ${type} ${i+1}: ${content.substring(0, 150)}...`, 'response');
+                            });
+                        }
+                        
+                        // Look for error patterns
+                        const errorMatches = result.match(/❌ ([^\n]+)/g);
+                        if (errorMatches) {
+                            errorMatches.forEach((match, i) => {
+                                const error = match.replace('❌ ', '');
+                                addLog(`❌ ERROR ${i+1}: ${error}`, 'error');
+                            });
+                        }
+                        
+                        // Look for attached file processing
+                        if (hasAttachments) {
+                            addLog(`📎 PROCESSED ${attachmentIds.length} ATTACHED FILE(S): [${attachmentIds.join(', ')}]`, 'docs');
+                        }
+                    }
+                    
+                    if (data.status === 'completed') {
+                        addLog('✅ WORKFLOW EXECUTION COMPLETED SUCCESSFULLY', 'response');
+                        
+                        let resultMessage = `✅ Workflow executed successfully!\n\nExecution ID: ${data.execution_id}\nStatus: ${data.status}\nExecution Time: ${executionTime}`;
+                        
+                        if (hasAttachments) {
+                            resultMessage += `\nProcessed ${attachmentIds.length} attached document(s)`;
+                        }
+                        
+                        if (!query && !hasAttachments) {
+                            resultMessage += `\nExecuted workflow without input or attachments`;
+                        }
+                        
+                        resultMessage += `\n\n=== RESULT ===\n${data.result}`;
+                        
+                        showResult(resultDiv, resultMessage, 'success');
+                        
+                        // Show feedback section after successful execution
+                        document.getElementById('feedbackSection').style.display = 'block';
+                        
+                        // Add tip about Paradigm tool
+                        const tipDiv = document.createElement('div');
+                        tipDiv.style.cssText = 'background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px; border-left: 4px solid #2196f3; font-size: 12px;';
+                        tipDiv.innerHTML = '<strong>💡 Tip:</strong> The demo workflow is available in Paradigm under the tool "Workflow demo". To run your newly generated workflow, go to Admin → Third Party Tools → Workflow demo tool and change the workflow ID in the URL address to the format shown above (e.g., "afe2e40e-3514-4445-b1c9-80ce24571837").';
+                        resultDiv.appendChild(tipDiv);
+                        
+                        // Automatically delete uploaded documents from Paradigm after testing
+                        if (hasAttachments) {
+                            await cleanupUploadedDocuments(attachmentIds);
+                        }
+                        
+                        // Clear attachments after successful execution
+                        queryAttachedFiles = [];
+                        document.getElementById('queryFilesList').innerHTML = '';
+                        document.getElementById('queryUploadStatus').innerHTML = '';
+                        
+                    } else {
+                        addLog(`⚠️ WORKFLOW STATUS: ${data.status}`, 'error');
+                        showResult(resultDiv, 
+                            `⚠️ Workflow execution status: ${data.status}\n\nExecution ID: ${data.execution_id}\nExecution Time: ${executionTime}\nError: ${data.error || 'Unknown error'}`, 
+                            'error'
+                        );
+                        
+                        // Clean up documents even if workflow failed
+                        if (hasAttachments) {
+                            await cleanupUploadedDocuments(attachmentIds);
+                            queryAttachedFiles = [];
+                            document.getElementById('queryFilesList').innerHTML = '';
+                            document.getElementById('queryUploadStatus').innerHTML = '';
+                        }
+                    }
+                } else {
+                    showResult(resultDiv, `❌ Error: ${data.detail || 'Failed to execute workflow'}`, 'error');
+                    
+                    // Clean up documents even if API call failed
+                    if (hasAttachments) {
+                        await cleanupUploadedDocuments(attachmentIds);
+                        queryAttachedFiles = [];
+                        document.getElementById('queryFilesList').innerHTML = '';
+                        document.getElementById('queryUploadStatus').innerHTML = '';
+                    }
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Network Error: ${error.message}`, 'error');
+                
+                // Clean up documents even if network error occurred
+                if (hasAttachments) {
+                    await cleanupUploadedDocuments(attachmentIds);
+                    queryAttachedFiles = [];
+                    document.getElementById('queryFilesList').innerHTML = '';
+                    document.getElementById('queryUploadStatus').innerHTML = '';
+                }
+            }
+        }
+
+        /**
+         * Display result messages in the UI with appropriate styling.
+         * 
+         * @param {Element} element - DOM element to display result in
+         * @param {string} message - Message to display
+         * @param {string} type - Result type (success, error, loading)
+         */
+        function showResult(element, message, type) {
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+
+        // =============================================================
+        // PAGE INITIALIZATION
+        // =============================================================
+        
+        /**
+         * Initialize the page with example workflows and default state.
+         */
+        window.onload = function() {
+            const examples = [
+                "Search for documents about the user's question, then analyze those documents to provide a detailed summary.",
+                "For each sentence in the user input, search for relevant documents, then format results as Question and Answer pairs.",
+                "Search for documents, extract key information using chat completion, then analyze specific documents for deeper insights."
+            ];
+            
+            // Set up example text behavior for raw workflow description
+            const rawWorkflowTextarea = document.getElementById('rawWorkflowDescription');
+            const rawExampleText = "I want to search for documents about my question and then analyze them to provide a summary.";
+            
+            // Set initial example text for raw description
+            rawWorkflowTextarea.value = rawExampleText;
+            rawWorkflowTextarea.style.color = '#999';
+            
+            // Handle focus - clear example text when user starts typing
+            rawWorkflowTextarea.addEventListener('focus', function() {
+                if (this.value === rawExampleText) {
+                    this.value = '';
+                    this.style.color = '#333';
+                }
+            });
+            
+            // Handle blur - restore example text if field is empty
+            rawWorkflowTextarea.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.value = rawExampleText;
+                    this.style.color = '#999';
+                }
+            });
+            
+            // Handle input - change color when user types
+            rawWorkflowTextarea.addEventListener('input', function() {
+                if (this.value !== rawExampleText) {
+                    this.style.color = '#333';
+                }
+            });
+            
+            // Set up example text behavior for enhanced workflow description
+            const workflowTextarea = document.getElementById('workflowDescription');
+            const exampleText = "Enhanced workflow description will appear here...";
+            
+            // Set initial example text
+            workflowTextarea.value = exampleText;
+            workflowTextarea.style.color = '#999';
+            
+            // Handle focus - clear example text when user starts typing
+            workflowTextarea.addEventListener('focus', function() {
+                if (this.value === exampleText) {
+                    this.value = '';
+                    this.style.color = '#333';
+                }
+            });
+            
+            // Handle blur - restore example text if field is empty
+            workflowTextarea.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.value = exampleText;
+                    this.style.color = '#999';
+                }
+            });
+            
+            // Handle input - change color when user types
+            workflowTextarea.addEventListener('input', function() {
+                if (this.value !== exampleText) {
+                    this.style.color = '#333';
+                }
+            });
+
+            // File mode doesn't have the workflow code textarea - skip this initialization
+            
+            document.getElementById('testButton').textContent = 'Test Workflow';
+            
+            // Initialize test button for file mode
+            updateTestButtonState();
+            
+            // Initialize automated testing features
+            syncWorkflowCode();
+            
+            // Set up example text behavior for automated testing workflow code textarea
+            const autoCodeTextarea = document.getElementById('workflowCodeAuto');
+            const autoCodeExampleText = "Generated workflow code will appear here after creating a workflow...";
+            
+            // Set initial example text
+            autoCodeTextarea.value = autoCodeExampleText;
+            autoCodeTextarea.style.color = '#999';
+            
+            // Handle focus - clear example text when user starts typing
+            autoCodeTextarea.addEventListener('focus', function() {
+                if (this.value === autoCodeExampleText) {
+                    this.value = '';
+                    this.style.color = '#333';
+                }
+            });
+            
+            // Handle blur - restore example text if field is empty
+            autoCodeTextarea.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.value = autoCodeExampleText;
+                    this.style.color = '#999';
+                }
+            });
+            
+            // Handle input - change color when user types
+            autoCodeTextarea.addEventListener('input', function() {
+                if (this.value !== autoCodeExampleText) {
+                    this.style.color = '#333';
+                }
+                updateLaunchButtonState();
+            });
+            
+            // Initialize launch button state
+            updateLaunchButtonState();
+        };
+
+        /**
+         * Apply user feedback to modify the generated workflow code.
+         * Handles both stored workflows and custom pasted code.
+         */
+        async function applyFeedbackToCode() {
+            const feedback = document.getElementById('feedbackInput').value.trim();
+            const resultDiv = document.getElementById('feedbackResult');
+            const workflowCodeElement = document.getElementById('workflowCode');
+            const currentCode = workflowCodeElement ? workflowCodeElement.value.trim() : "";
+            const codeExampleText = "Generated workflow code will appear here after creating a workflow...";
+            
+            if (!feedback) {
+                alert('Please provide feedback to improve the code');
+                return;
+            }
+            
+            if (!currentCode || currentCode === codeExampleText) {
+                alert('No code to improve. Please create a workflow first or paste code into the code editor.');
+                return;
+            }
+            
+            try {
+                showResult(resultDiv, 'Applying your feedback to improve the workflow code...', 'loading');
+                addLog('🔧 Applying user feedback to workflow code', 'info');
+                addLog(`💬 User feedback: ${feedback}`, 'query');
+                
+                let response, data;
+                
+                // If we have a stored workflow ID, use the feedback endpoint
+                if (currentWorkflowId) {
+                    const result = await loggedFetch(`${API_BASE}/workflows/${currentWorkflowId}/apply-feedback`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ feedback: feedback })
+                    }, 'APPLY FEEDBACK TO STORED WORKFLOW');
+                    response = result.response;
+                    data = result.data;
+                } else {
+                    // If no workflow ID but we have custom code, create a new workflow with feedback
+                    const enhancedDescription = `
+CURRENT CODE TO IMPROVE:
+${currentCode}
+
+USER FEEDBACK FOR IMPROVEMENT:
+${feedback}
+
+INSTRUCTIONS: Modify the provided code based on the user feedback while:
+1. Maintaining all original functionality
+2. Following all code generation standards and best practices
+3. Preserving the self-contained nature of the code
+4. Keeping all imports and API client implementations
+5. Maintaining the async execute_workflow function signature
+6. Following structured output patterns when extracting information
+7. Including visual search fallback mechanisms where applicable
+
+Generate the improved workflow code that incorporates the user feedback.`;
+
+                    const result = await loggedFetch(`${API_BASE}/workflows`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            description: enhancedDescription,
+                            name: `Improved Custom Code`,
+                            context: { 
+                                feedback_iteration: true,
+                                user_feedback: feedback,
+                                custom_code_improvement: true
+                            }
+                        })
+                    }, 'APPLY FEEDBACK TO CUSTOM CODE');
+                    response = result.response;
+                    data = result.data;
+                }
+                
+                if (response.ok) {
+                    // Update the code in the textarea
+                    document.getElementById('workflowCode').value = data.generated_code;
+                    
+                    // Store updated workflow info
+                    currentWorkflowId = data.id;
+                    currentWorkflowName = data.name;
+                    
+                    // Update feedback counter
+                    feedbackIterationCount++;
+                    updateFeedbackCounter();
+                    
+                    // Update button state
+                    updateTestButtonState();
+                    
+                    showResult(resultDiv, `✅ Code improved successfully!\n\nApplied feedback: "${feedback}"\n\nWorkflow ID: ${data.id}\nThe updated code is now in the code editor above. You can test it or provide additional feedback.`, 'success');
+                    
+                    // Clear feedback input for next iteration
+                    document.getElementById('feedbackInput').value = '';
+                    
+                    addLog(`✅ Code improved: ${data.id}`, 'response');
+                    addLog(`💻 Updated code length: ${data.generated_code.length} characters`, 'response');
+                    
+                } else {
+                    showResult(resultDiv, `❌ Error: ${data.detail || 'Failed to apply feedback'}`, 'error');
+                    addLog(`❌ Feedback application failed: ${data.detail}`, 'error');
+                }
+                
+            } catch (error) {
+                showResult(resultDiv, `❌ Network Error: ${error.message}`, 'error');
+                addLog(`❌ Feedback application network error: ${error.message}`, 'error');
+            }
+        }
+
+        // =============================================================
+        // AUTOMATED TESTING FUNCTIONS (SECTION 3B)
+        // =============================================================
+        
+        // Global variables for automated testing
+        let testExamples = [];
+        let autoTestAttachedFiles = [];
+        
+        /**
+         * Synchronize workflow code between section 3 and section 3B
+         */
+        function syncWorkflowCode() {
+            const mainCodeTextarea = document.getElementById('workflowCode');
+            const autoCodeTextarea = document.getElementById('workflowCodeAuto');
+            
+            // In file mode, mainCodeTextarea might not exist - skip sync if so
+            if (mainCodeTextarea && autoCodeTextarea) {
+                // Sync from main to auto when main changes
+                mainCodeTextarea.addEventListener('input', function() {
+                    if (this.value && this.value !== "Generated workflow code will appear here after creating a workflow...") {
+                        autoCodeTextarea.value = this.value;
+                        autoCodeTextarea.style.color = '#333';
+                    }
+                });
+                
+                // Sync from auto to main when auto changes  
+                autoCodeTextarea.addEventListener('input', function() {
+                    if (this.value && this.value !== "Generated workflow code will appear here after creating a workflow...") {
+                        mainCodeTextarea.value = this.value;
+                        mainCodeTextarea.style.color = '#333';
+                        updateTestButtonState(); // Update section 3 test button
+                    }
+                });
+                
+                // Initial sync if main has content
+                if (mainCodeTextarea.value && mainCodeTextarea.value !== "Generated workflow code will appear here after creating a workflow...") {
+                    autoCodeTextarea.value = mainCodeTextarea.value;
+                    autoCodeTextarea.style.color = '#333';
+                }
+            }
+        }
+        
+        /**
+         * Handle drag-and-drop file uploads for automated testing
+         */
+        function handleAutoTestDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const uploadArea = document.getElementById('autoTestUploadArea');
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(event.dataTransfer.files);
+            uploadAutoTestFiles(files);
+        }
+
+        /**
+         * Handle file selection for automated testing
+         */
+        function handleAutoTestFileSelect(event) {
+            const files = Array.from(event.target.files);
+            uploadAutoTestFiles(files);
+        }
+
+        /**
+         * Upload files for automated testing
+         */
+        async function uploadAutoTestFiles(files) {
+            const statusDiv = document.getElementById('autoTestUploadStatus');
+            const filesList = document.getElementById('autoTestFilesList');
+            
+            for (const file of files) {
+                try {
+                    statusDiv.innerHTML = `<div class="result loading">Uploading ${file.name}...</div>`;
+                    addLog(`📤 Uploading auto-test attachment: ${file.name} (${file.size} bytes)`, 'info');
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('collection_type', 'private');
+                    
+                    const { response, data } = await loggedFetch(`${API_BASE}/files/upload`, {
+                        method: 'POST',
+                        body: formData
+                    }, `UPLOAD AUTO-TEST FILE: ${file.name}`);
+                    
+                    if (response.ok) {
+                        // Add to auto test attached files list
+                        autoTestAttachedFiles.push(data);
+                        
+                        // Update UI
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `
+                            <div class="file-info">
+                                <strong>${data.filename}</strong> (ID: ${data.id})
+                                <br><small>${data.bytes} bytes • Status: ${data.status}</small>
+                            </div>
+                            <div class="file-actions">
+                                <button onclick="removeAutoTestFile(${data.id})" class="remove-file" title="Remove attachment">🗑️</button>
+                            </div>
+                        `;
+                        filesList.appendChild(listItem);
+                        
+                        statusDiv.innerHTML = `<div class="result success">✅ ${file.name} attached!</div>`;
+                        addLog(`✅ Auto-test file uploaded successfully: ID ${data.id}`, 'response');
+                        
+                    } else {
+                        statusDiv.innerHTML = `<div class="result error">❌ Failed to upload ${file.name}</div>`;
+                        addLog(`❌ Auto-test upload failed: ${data.detail || 'Unknown error'}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="result error">❌ Network error uploading ${file.name}</div>`;
+                    addLog(`❌ Auto-test upload network error: ${error.message}`, 'error');
+                }
+            }
+            
+            // Clear file input
+            document.getElementById('autoTestFileInput').value = '';
+        }
+
+        /**
+         * Remove a file attachment from automated testing
+         */
+        async function removeAutoTestFile(fileId) {
+            if (!confirm('Are you sure you want to remove this attachment?')) return;
+            
+            try {
+                addLog(`🗑️ Removing auto-test attachment ID: ${fileId}`, 'info');
+                
+                const { response, data } = await loggedFetch(`${API_BASE}/files/${fileId}`, {
+                    method: 'DELETE'
+                }, `DELETE AUTO-TEST FILE: ${fileId}`);
+                
+                if (response.ok) {
+                    // Remove from auto test attached files array
+                    autoTestAttachedFiles = autoTestAttachedFiles.filter(file => file.id !== fileId);
+                    
+                    // Remove from UI
+                    const filesList = document.getElementById('autoTestFilesList');
+                    const items = filesList.querySelectorAll('li');
+                    items.forEach(item => {
+                        if (item.innerHTML.includes(`ID: ${fileId}`)) {
+                            item.remove();
+                        }
+                    });
+                    
+                    addLog(`✅ Auto-test attachment removed: ID ${fileId}`, 'response');
+                    
+                } else {
+                    addLog(`❌ Remove auto-test attachment error: ${data.detail}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Remove auto-test attachment network error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Add a test example to the list
+         */
+        function addTestExample() {
+            const query = document.getElementById('testExampleQuery').value.trim();
+            const criteria = document.getElementById('testValidationCriteria').value.trim();
+            const expectedOutput = document.getElementById('testExpectedOutput').value.trim();
+            const description = document.getElementById('testDescription').value.trim();
+            
+            if (!query) {
+                alert('Please enter a query for the test example');
+                return;
+            }
+            
+            if (!criteria) {
+                alert('Please enter validation criteria for the test example');
+                return;
+            }
+            
+            // Create test example object
+            const testExample = {
+                id: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                query: query,
+                attached_file_ids: autoTestAttachedFiles.map(f => f.id),
+                validation_criteria: criteria,
+                expected_output: expectedOutput || null,
+                description: description || null
+            };
+            
+            testExamples.push(testExample);
+            
+            // Clear form
+            document.getElementById('testExampleQuery').value = '';
+            document.getElementById('testValidationCriteria').value = '';
+            document.getElementById('testExpectedOutput').value = '';
+            document.getElementById('testDescription').value = '';
+            
+            // Clear attached files
+            autoTestAttachedFiles = [];
+            document.getElementById('autoTestFilesList').innerHTML = '';
+            document.getElementById('autoTestUploadStatus').innerHTML = '';
+            
+            // Update display
+            updateTestExamplesDisplay();
+            updateLaunchButtonState();
+            
+            addLog(`✅ Test example added: ${testExample.id}`, 'info');
+        }
+
+        /**
+         * Update the test examples display
+         */
+        function updateTestExamplesDisplay() {
+            const display = document.getElementById('testExamplesDisplay');
+            
+            if (testExamples.length === 0) {
+                display.innerHTML = '<p style="color: #666; font-style: italic; margin: 0;">No test examples added yet. Add your first test example above.</p>';
+                return;
+            }
+            
+            let html = '';
+            testExamples.forEach((example, index) => {
+                html += `
+                    <div style="border: 1px solid #ddd; border-radius: 4px; margin: 10px 0; padding: 15px; background: #fafafa;">
+                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
+                            <h5 style="margin: 0; color: #333;">Test ${index + 1}: ${example.description || example.query.substring(0, 50) + (example.query.length > 50 ? '...' : '')}</h5>
+                            <button onclick="removeTestExample('${example.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 12px; cursor: pointer;" title="Remove test">🗑️ Remove</button>
+                        </div>
+                        <div style="font-size: 13px; color: #555;">
+                            <p><strong>Query:</strong> ${example.query}</p>
+                            <p><strong>Validation Criteria:</strong> ${example.validation_criteria}</p>
+                            ${example.expected_output ? `<p><strong>Expected Output:</strong> ${example.expected_output.substring(0, 100) + (example.expected_output.length > 100 ? '...' : '')}</p>` : ''}
+                            ${example.attached_file_ids.length > 0 ? `<p><strong>Attached Files:</strong> ${example.attached_file_ids.length} file(s)</p>` : ''}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button onclick="editTestExample('${example.id}')" style="background: #ffc107; color: #212529; border: none; padding: 4px 8px; border-radius: 3px; font-size: 12px; cursor: pointer;">✏️ Edit</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            display.innerHTML = html;
+        }
+
+        /**
+         * Remove a test example
+         */
+        function removeTestExample(testId) {
+            if (!confirm('Are you sure you want to remove this test example?')) return;
+            
+            testExamples = testExamples.filter(example => example.id !== testId);
+            updateTestExamplesDisplay();
+            updateLaunchButtonState();
+            
+            addLog(`🗑️ Test example removed: ${testId}`, 'info');
+        }
+
+        /**
+         * Edit a test example (simplified - populate form)
+         */
+        function editTestExample(testId) {
+            const example = testExamples.find(e => e.id === testId);
+            if (!example) return;
+            
+            // Populate form with existing values
+            document.getElementById('testExampleQuery').value = example.query;
+            document.getElementById('testValidationCriteria').value = example.validation_criteria;
+            document.getElementById('testExpectedOutput').value = example.expected_output || '';
+            document.getElementById('testDescription').value = example.description || '';
+            
+            // Remove the original example (user will add updated version)
+            removeTestExample(testId);
+            
+            // Scroll to form
+            document.getElementById('currentTestForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /**
+         * Update iteration mode controls
+         */
+        function updateIterationMode() {
+            const fixedIterationsInput = document.getElementById('fixedIterations');
+            const selectedMode = document.querySelector('input[name="iterationMode"]:checked').value;
+            
+            if (selectedMode === 'fixed_iterations') {
+                fixedIterationsInput.disabled = false;
+                fixedIterationsInput.style.backgroundColor = 'white';
+            } else {
+                fixedIterationsInput.disabled = true;
+                fixedIterationsInput.style.backgroundColor = '#f0f0f0';
+            }
+        }
+
+        /**
+         * Update launch button state
+         */
+        function updateLaunchButtonState() {
+            const launchButton = document.getElementById('launchTestingButton');
+            const statusSpan = document.getElementById('testButtonStatus');
+            const codeTextarea = document.getElementById('workflowCodeAuto');
+            const codeExampleText = "Generated workflow code will appear here after creating a workflow...";
+            
+            const hasCode = codeTextarea && codeTextarea.value.trim() && codeTextarea.value.trim() !== codeExampleText;
+            const hasTests = testExamples.length > 0;
+            
+            if (hasCode && hasTests) {
+                launchButton.disabled = false;
+                launchButton.style.backgroundColor = '#ff6b35';
+                launchButton.style.cursor = 'pointer';
+                statusSpan.textContent = `Ready to test ${testExamples.length} example(s) with automated improvements`;
+            } else if (!hasCode) {
+                launchButton.disabled = true;
+                launchButton.style.backgroundColor = '#ccc';
+                launchButton.style.cursor = 'not-allowed';
+                statusSpan.textContent = 'Create a workflow first (section 2) to enable testing';
+            } else if (!hasTests) {
+                launchButton.disabled = true;
+                launchButton.style.backgroundColor = '#ccc';
+                launchButton.style.cursor = 'not-allowed';
+                statusSpan.textContent = 'Add at least one test example to start testing';
+            }
+        }
+
+        /**
+         * Launch automated workflow testing
+         */
+        async function launchAutomatedTesting() {
+            const codeTextarea = document.getElementById('workflowCodeAuto');
+            const resultsDiv = document.getElementById('automatedTestResults');
+            const progressDiv = document.getElementById('progressContent');
+            const finalResultsDiv = document.getElementById('finalResults');
+            
+            if (testExamples.length === 0) {
+                alert('Please add at least one test example');
+                return;
+            }
+            
+            if (!codeTextarea.value.trim() || codeTextarea.value.trim() === "Generated workflow code will appear here after creating a workflow...") {
+                alert('No workflow code to test. Please create a workflow first.');
+                return;
+            }
+            
+            try {
+                // Show results section and clear previous results
+                resultsDiv.style.display = 'block';
+                progressDiv.innerHTML = '<div class="result loading">🚀 Starting automated testing...</div>';
+                finalResultsDiv.innerHTML = '';
+                
+                // Get iteration settings
+                const iterationMode = document.querySelector('input[name="iterationMode"]:checked').value;
+                const fixedIterations = parseInt(document.getElementById('fixedIterations').value) || 3;
+                
+                // Prepare request
+                const request = {
+                    workflow_code: codeTextarea.value,
+                    test_examples: testExamples,
+                    iteration_mode: iterationMode,
+                    max_iterations: 10,
+                    fixed_iterations: iterationMode === 'fixed_iterations' ? fixedIterations : null
+                };
+                
+                addLog(`🧪 Starting automated testing with ${testExamples.length} test examples`, 'workflow-step');
+                addLog(`⚙️ Mode: ${iterationMode}, Max iterations: ${iterationMode === 'fixed_iterations' ? fixedIterations : 10}`, 'info');
+                
+                progressDiv.innerHTML = '<div class="result loading">🔄 Running automated tests and improvements... (this may take several minutes)</div>';
+                
+                // Call automated testing API
+                const { response, data } = await loggedFetch(`${API_BASE}/workflows/automated-test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                }, 'AUTOMATED WORKFLOW TESTING');
+                
+                if (response.ok) {
+                    addLog(`✅ Automated testing completed: ${data.stopped_reason}, ${data.total_iterations} iterations`, 'response');
+                    
+                    // Update workflow code with improved version
+                    codeTextarea.value = data.improved_workflow_code;
+                    codeTextarea.style.color = '#333';
+                    
+                    // Sync back to main section
+                    const mainCodeTextarea = document.getElementById('workflowCode');
+                    if (mainCodeTextarea) {
+                        mainCodeTextarea.value = data.improved_workflow_code;
+                        mainCodeTextarea.style.color = '#333';
+                        updateTestButtonState();
+                    }
+                    
+                    // Display results
+                    let resultHtml = `
+                        <div class="result success">
+                            <h3 style="margin-top: 0;">✅ Automated Testing Completed!</h3>
+                            <div style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                                <p><strong>📊 Summary:</strong></p>
+                                <ul>
+                                    <li>Total iterations: ${data.total_iterations}</li>
+                                    <li>All tests passed: ${data.all_tests_passed ? '✅ Yes' : '❌ No'}</li>
+                                    <li>Stopped reason: ${data.stopped_reason}</li>
+                                    ${data.problematic_tests ? `<li>Problematic tests: ${data.problematic_tests.length}</li>` : ''}
+                                </ul>
+                            </div>
+                        `;
+                    
+                    // Show final test results
+                    if (data.test_results.length > 0) {
+                        resultHtml += `
+                            <div style="margin: 15px 0;">
+                                <h4>🔍 Final Test Results:</h4>
+                        `;
+                        
+                        data.test_results.forEach((result, index) => {
+                            const testExample = testExamples.find(t => t.id === result.test_id);
+                            resultHtml += `
+                                <div style="border: 1px solid ${result.passed ? '#28a745' : '#dc3545'}; border-radius: 4px; margin: 10px 0; padding: 10px; background: ${result.passed ? '#d4edda' : '#f8d7da'};">
+                                    <h5 style="margin: 0 0 8px 0; color: ${result.passed ? '#155724' : '#721c24'};">
+                                        ${result.passed ? '✅' : '❌'} Test ${index + 1}: ${testExample?.description || testExample?.query?.substring(0, 50) || result.test_id}
+                                    </h5>
+                                    <p style="margin: 5px 0; font-size: 13px;"><strong>AI Feedback:</strong> ${result.evaluation_feedback}</p>
+                                    ${result.execution_time ? `<p style="margin: 5px 0; font-size: 12px; color: #666;">Execution time: ${result.execution_time.toFixed(2)}s</p>` : ''}
+                                    ${result.error ? `<p style="margin: 5px 0; font-size: 13px; color: #dc3545;"><strong>Error:</strong> ${result.error}</p>` : ''}
+                                </div>
+                            `;
+                        });
+                        
+                        resultHtml += `</div>`;
+                    }
+                    
+                    // Show problematic tests warning
+                    if (data.problematic_tests && data.problematic_tests.length > 0) {
+                        resultHtml += `
+                            <div style="margin: 15px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                <h4 style="margin-top: 0; color: #856404;">⚠️ Problematic Tests Detected</h4>
+                                <p style="color: #856404;">The following tests failed repeatedly and may need manual review:</p>
+                                <ul style="color: #856404;">
+                                    ${data.problematic_tests.map(testId => {
+                                        const test = testExamples.find(t => t.id === testId);
+                                        return `<li>${test?.description || test?.query?.substring(0, 50) || testId}</li>`;
+                                    }).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    // Max iterations warning
+                    if (data.stopped_reason === 'max_iterations' && !data.all_tests_passed) {
+                        resultHtml += `
+                            <div style="margin: 15px 0; padding: 15px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 4px;">
+                                <h4 style="margin-top: 0; color: #721c24;">🛑 Maximum Iterations Reached</h4>
+                                <p style="color: #721c24;">Testing stopped after ${data.total_iterations} iterations, but not all tests passed. You may need to manually review the validation criteria or workflow logic.</p>
+                            </div>
+                        `;
+                    }
+                    
+                    resultHtml += `</div>`;
+                    finalResultsDiv.innerHTML = resultHtml;
+                    progressDiv.innerHTML = '';
+                    
+                    // Scroll to results
+                    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+                    
+                } else {
+                    addLog(`❌ Automated testing failed: ${data.detail}`, 'error');
+                    finalResultsDiv.innerHTML = `<div class="result error">❌ Automated testing failed: ${data.detail || 'Unknown error'}</div>`;
+                    progressDiv.innerHTML = '';
+                }
+                
+            } catch (error) {
+                addLog(`❌ Automated testing network error: ${error.message}`, 'error');
+                finalResultsDiv.innerHTML = `<div class="result error">❌ Network error: ${error.message}</div>`;
+                progressDiv.innerHTML = '';
+            }
+        }
+    </script>
+</body>
+</html>
